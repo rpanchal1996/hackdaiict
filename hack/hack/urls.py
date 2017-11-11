@@ -18,5 +18,7 @@ from django.contrib import admin
 from app import views
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^sms',views.sms)
+    url(r'^sms',views.sms),
+    url(r'^getlocation/(\d+)',views.get_location),
+    url(r'^registerfarmer',views.register_farmer)
 ]

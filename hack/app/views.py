@@ -7,8 +7,18 @@ from twilio.rest import TwilioRestClient
 # Create your views here.
 
 import json
-from math import radians, asin, sin, cos, sqrt
+from math import radians, asin, sin, cos, sqrt, ceil
 from operator import itemgetter
+
+def send_sms(message,number):
+	ACCOUNT_SID = "ACfd8458e1b38af66c49017d5905dcfaf2" 
+	AUTH_TOKEN = "dedea98e4e1ff2c7403667fdc8542373" 
+ 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN) 
+ 	client.messages.create(
+    to=number, 
+    from_="+18285855546", 
+    body=message,
+	)
 
 @csrf_exempt
 def sms(request):
@@ -25,10 +35,25 @@ def sms(request):
 		lending.from_time = str(list_of_numbers[2])
 		lending.to_time = str(list_of_numbers[3])
 		lending.number = str(sender)
+		farmer_number = str(sender)
 		lending.fullfilled = str(0)
 		lending.save()
+		needed_tractors = BorrowTractor.objects.all()
+		for tractor in needed_tractors:
+			if tractor.quantity <= lending.quantity and tractor.date == lending.date and tractor.from_time >= lending.from_time and tractor.to_time <= lending.to_time and tractor.fullfilled=="0":
+				lender_farmer = Farmer.objects.get(number=farmer_number)
+				borrower_farmer_number = tractor.number
+				borrower_farmer = Farmer.objects.get(number=borrower_farmer_number)
+				distance = get_distance(lender_farmer.lat, lender_farmer.lng, borrower_farmer.lat, borrower_farmer.lng)
+				distance = (ceil(distance*100)/100) 
+				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
+ 				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
+ 				send_sms(borrower_text,borrower_farmer.number)
+ 				send_sms(lender_text,lender_farmer.number)
+ 				break
 
 	elif 'needed' in body:
+		print ' IN NEEDED CONDITION '
 		borrow = BorrowTractor.objects.create()
 		borrow.quantity = str(list_of_numbers[0])
 		borrow.date = str(list_of_numbers[1])
@@ -38,16 +63,23 @@ def sms(request):
 		borrow.fullfilled = str(0)
 		farmer_number = str(sender)
 		borrow.save()
-
 		lending_tractors = LendTractor.objects.all()
 		for tractor in lending_tractors:
-			if tractor.quantity >= borrow.quantity and tractor.date == borrow.date and tractor.from_time <= borrow.from_time and tractor.to_time >= borrow.to_time:
+			print 'IN LOOP OF LENDING'
+			if tractor.quantity >= borrow.quantity and tractor.date == borrow.date and tractor.from_time <= borrow.from_time and tractor.to_time >= borrow.to_time and tractor.fullfilled=="0":
+				print 'LOGIC PASSED'
 				borrower_farmer = Farmer.objects.get(number=farmer_number)
 				lender_farmer_number = tractor.number
 				lender_farmer = Farmer.objects.get(number=lender_farmer_number)
 				distance = get_distance(lender_farmer.lat, lender_farmer.lng, borrower_farmer.lat, borrower_farmer.lng)
-				print str(distance) + "KM"
-				print str(lender_farmer_number)
+				distance = (ceil(distance*100)/100) 
+				print distance
+				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
+ 				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
+ 				send_sms(borrower_text,borrower_farmer.number)
+ 				send_sms(lender_text,lender_farmer.number)
+ 				print 'OK'
+ 				break
 
 	else:
 		print "Incorrect format"
@@ -102,4 +134,5 @@ def get_location(request, id):
 		farmer.save()
 		return HttpResponseRedirect('/admin')
 	return render(request, 'get_location.html',{'id':id})
+
 

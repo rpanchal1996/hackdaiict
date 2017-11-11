@@ -4,6 +4,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 import re
 from models import Farmer, BorrowTractor, LendTractor
 from twilio.rest import TwilioRestClient 
+import urllib2
 # Create your views here.
 
 import json
@@ -11,14 +12,11 @@ from math import radians, asin, sin, cos, sqrt, ceil
 from operator import itemgetter
 
 def send_sms(message,number):
-	ACCOUNT_SID = "ACfd8458e1b38af66c49017d5905dcfaf2" 
-	AUTH_TOKEN = "dedea98e4e1ff2c7403667fdc8542373" 
- 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN) 
- 	client.messages.create(
-    to=number, 
-    from_="+18285855546", 
-    body=message,
-	)
+	number = number[3:]
+	print number
+	urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=132727AshR9z6QU9Dg58416307&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
+	response = urllib2.urlopen(urltosend).read()
+	print response
 
 @csrf_exempt
 def sms(request):
@@ -74,8 +72,8 @@ def sms(request):
 				distance = get_distance(lender_farmer.lat, lender_farmer.lng, borrower_farmer.lat, borrower_farmer.lng)
 				distance = (ceil(distance*100)/100) 
 				print distance
-				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
- 				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
+				borrower_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
+ 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
  				send_sms(borrower_text,borrower_farmer.number)
  				send_sms(lender_text,lender_farmer.number)
  				print 'OK'
@@ -134,5 +132,8 @@ def get_location(request, id):
 		farmer.save()
 		return HttpResponseRedirect('/admin')
 	return render(request, 'get_location.html',{'id':id})
+
+def stress_location(lat, lng):
+	pass
 
 

@@ -23,9 +23,10 @@ urlpatterns = [
 	url(r'^registerfarmer',views.register_farmer),
 	url(r'^inputlocation/',views.enter_location_data),
 	url(r'^stresslocation/(\d+)/(\d+)',views.stress_location),
-	url(r'^vegetationcloud/',views.vegetation_outlier),
+	url(r'^vegetationcloud/(\d+)',views.vegetation_outlier),
 	url(r'^$', views.index), 
 	url(r'^curve$', views.curve),
-	url(r'^display_curve$', views.display_curve)
+	url(r'^display_curve$', views.display_curve),
+	url(r'^findpeak/(\d+)', views.find_peak)
 
 ]

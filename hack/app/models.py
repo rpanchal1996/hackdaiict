@@ -35,3 +35,21 @@ class Crop(models.Model):
 	def __str__(self):
 		return self.name
 
+class Truck(models.Model):
+    name = models.CharField(max_length=100, blank=True, null=True)
+    number_plate = models.CharField(max_length=100, blank=True, null=True)
+    capacity = models.CharField(max_length=100, blank=True, null=True)
+    price = models.CharField(max_length=100, blank=True, null=True)
+    currently_occupied_by = models.CharField(max_length=100, blank=True, null=True)
+    occupied = models.CharField(max_length=100, blank=True, null=True)
+
+class Order(models.Model):
+    farmer1 = models.CharField(max_length=100, blank=True, null=True)
+    farmer2 = models.CharField(max_length=100, blank=True, null=True)
+    demand_date = models.CharField(max_length=100, blank=True, null=True)
+    truck = models.CharField(max_length=100, blank=True, null=True)
+class FarmerDemand(models.Model):
+    demanding_farmer = models.CharField(max_length=100, blank=True, null=True)
+    demand_capacity  = models.CharField(max_length=100, blank=True, null=True)
+    demand_date      = models.CharField(max_length=100, blank=True, null=True)
+    number = models.CharField(max_length=100, blank=True, null=True)

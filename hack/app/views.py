@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect
 import re
-from models import Farmer, BorrowTractor, LendTractor, Location, Crop
+from models import Farmer, BorrowTractor, LendTractor, Location, Crop, Truck, Order, FarmerDemand
 from twilio.rest import TwilioRestClient 
 import urllib2
 import numpy as np
@@ -12,6 +12,8 @@ from scipy import asarray as ar
 import numpy as np
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from scipy.signal import find_peaks_cwt
+import matplotlib.pyplot as plt
 # Create your views here.
 
 import json
@@ -19,11 +21,11 @@ from math import radians, asin, sin, cos, sqrt, ceil
 from operator import itemgetter
 
 def send_sms(message,number):
-	number = number[3:]
-	print number
-	urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=132727AshR9z6QU9Dg58416307&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
-	response = urllib2.urlopen(urltosend).read()
-	print response
+number = number[3:]
+print number
+urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=183285A4cmVICIpG5a075623&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
+response = urllib2.urlopen(urltosend).read()
+print response
 
 @csrf_exempt
 def sms(request):
@@ -32,7 +34,7 @@ def sms(request):
 	sms_id = request.POST.get('SmsMessageSid')
 	sender,body = retrieve_messages(sms_id)
 	list_of_numbers = re.findall('\\b\\d+\\b', body)
-
+	
 	if 'available' in body:
 		lending = LendTractor.objects.create()
 		lending.quantity = str(list_of_numbers[0])
@@ -51,10 +53,10 @@ def sms(request):
 				borrower_farmer = Farmer.objects.get(number=borrower_farmer_number)
 				distance = get_distance(lender_farmer.lat, lender_farmer.lng, borrower_farmer.lat, borrower_farmer.lng)
 				distance = (ceil(distance*100)/100) 
-				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
-				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
-				#send_sms(borrower_text,borrower_farmer.number)
-				#send_sms(lender_text,lender_farmer.number)
+				borrower_text = 'THE FARMER IS' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
+				lender_text = 'THE FARMER IS'   + str(distance) + ' KM away. Number is =  ' + str(borrower_farmer.number)
+				send_sms(borrower_text,borrower_farmer.number)
+				send_sms(lender_text,lender_farmer.number)
 				borrower_farmer.fullfilled = 1
 				borrower_farmer.save()
 				lender_farmer.fullfilled = 1
@@ -84,14 +86,13 @@ def sms(request):
 				print distance
 				borrower_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
-				#send_sms(borrower_text,borrower_farmer.number)
-				#send_sms(lender_text,lender_farmer.number)
+				send_sms(borrower_text,borrower_farmer.number)
+				send_sms(lender_text,lender_farmer.number)
 				borrower_farmer.fullfilled = 1
 				borrower_farmer.save()
 				lender_farmer.fullfilled = 1
 				lender_farmer.save()
 				break
-
 	else:
 		print "Incorrect format"
 
@@ -155,7 +156,7 @@ def enter_location_data(request):
 		location.lng = lng
 		location.save()
 		location_id = location.id
-		return HttpResponseRedirect('/stresslocation/'+str(location_id))
+		return HttpResponseRedirect('/stresslocation/'+str(location_id)+'/1')
 	return render(request, 'get_location2.html',{'id':id})
 
 
@@ -181,12 +182,17 @@ def stress_location(request,cropid, locationid):
 	print below_minimum
 	return HttpResponse(content=json_response)
 
-def vegetation_outlier(request):
-	longitude = "72.14477539062501"
-	latitude = "24.279174804687507"
+def vegetation_outlier(request,id):
+	location = Location.objects.get(id=id)
+	longitude = location.lng
+	latitude = location.lat
+	print latitude
+	print longitude
 	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/NDVI_PROBA?latitude="+latitude+"&longitude="+longitude
+	print url
 	response = urllib2.urlopen(url).read()
 	json_response = json.loads(response)
+	#print json_response
 	location_difference = []
 	outliers = []
 	for index in xrange(1,len(json_response)-1):
@@ -201,13 +207,23 @@ def vegetation_outlier(request):
 	for index, value in enumerate(location_difference):
 		if value> (mean_difference + std_difference*2):
 			outliers.append(index+1)
-	y_plot = [str(response['value']) for response in json_response]
-	x_plot = [response['time'] for response in json_response]
-	print y_plot
-	print x_plot
+	y_plot = [(response['value']) for response in json_response]
+	x_plot = [str(response['time']) for response in json_response]
+	#print y_plot
+	#print x_plot
 	x_outlier = [json_response[outlier]['time'] for outlier in outliers]
 	y_outlier = [json_response[outlier]['value'] for outlier in outliers]
-	return render(request, 'vegetation_outlier.html',{'x_plot':x_plot,'y_plot':y_plot,'x_outlier':x_outlier, 'y_outlier':y_outlier})
+	list_to_render = []
+	print x_outlier
+	print y_outlier
+	for x,y in zip(x_outlier, y_outlier):
+		temp_dict = {}
+		temp_dict['name'] = 'cloud'
+		temp_dict['xAxis'] = x
+		temp_dict['yAxis'] = y
+		temp_dict['value'] = 25
+		list_to_render.append(temp_dict)
+	return render(request, 'vegetation_outlier.html',{'x_plot':x_plot,'y_plot':y_plot,'x_outlier':x_outlier, 'y_outlier':y_outlier,'to_render':list_to_render})
 
 def moisture_outlier(request):
 	longitude = "72.14477539062501"
@@ -276,3 +292,24 @@ def curve(request):
 
 def display_curve(request):
 	return render(request, 'chart.html')
+
+def find_peak(request,id):
+	location = Location.objects.get(id=id)
+	longitude = location.lng
+	latitude = location.lat
+	print latitude
+	print longitude
+	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/NDVI_PROBA?latitude="+latitude+"&longitude="+longitude
+	response = urllib2.urlopen(url).read()
+	json_response = json.loads(response)
+	print len(json_response)
+	t = np.arange(0,len(json_response))
+	y_values = [json_object['value'] for json_object in json_response]
+	peaks = find_peaks_cwt(y_values,widths=np.arange(1,50))
+	
+	plt.plot(t,y_values)
+	for peak in peaks:
+		plt.plot(t[peak+1],y_values[peak+1],'ro')
+	#plt.show()
+	plt.savefig('/home/rudresh/Desktop/plot.png')
+

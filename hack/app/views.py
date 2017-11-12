@@ -6,6 +6,12 @@ from models import Farmer, BorrowTractor, LendTractor, Location, Crop
 from twilio.rest import TwilioRestClient 
 import urllib2
 import numpy as np
+import requests
+import json
+from scipy import asarray as ar
+import numpy as np
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 # Create your views here.
 
 import json
@@ -47,8 +53,12 @@ def sms(request):
 				distance = (ceil(distance*100)/100) 
 				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
 				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
-				send_sms(borrower_text,borrower_farmer.number)
-				send_sms(lender_text,lender_farmer.number)
+				#send_sms(borrower_text,borrower_farmer.number)
+				#send_sms(lender_text,lender_farmer.number)
+				borrower_farmer.fullfilled = 1
+				borrower_farmer.save()
+				lender_farmer.fullfilled = 1
+				lender_farmer.save()
 				break
 
 	elif 'needed' in body:
@@ -64,7 +74,6 @@ def sms(request):
 		borrow.save()
 		lending_tractors = LendTractor.objects.all()
 		for tractor in lending_tractors:
-			print 'IN LOOP OF LENDING'
 			if tractor.quantity >= borrow.quantity and tractor.date == borrow.date and tractor.from_time <= borrow.from_time and tractor.to_time >= borrow.to_time and tractor.fullfilled=="0":
 				print 'LOGIC PASSED'
 				borrower_farmer = Farmer.objects.get(number=farmer_number)
@@ -75,9 +84,12 @@ def sms(request):
 				print distance
 				borrower_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
-				send_sms(borrower_text,borrower_farmer.number)
-				send_sms(lender_text,lender_farmer.number)
-				print 'OK'
+				#send_sms(borrower_text,borrower_farmer.number)
+				#send_sms(lender_text,lender_farmer.number)
+				borrower_farmer.fullfilled = 1
+				borrower_farmer.save()
+				lender_farmer.fullfilled = 1
+				lender_farmer.save()
 				break
 
 	else:
@@ -225,3 +237,42 @@ def moisture_outlier(request):
 	x_outlier = [json_response[outlier]['time'] for outlier in outliers]
 	y_outlier = [json_response[outlier]['value'] for outlier in outliers]
 	return render(request, 'moisture_outlier.html',{'x_plot':x_plot,'y_plot':y_plot,'x_outlier':x_outlier, 'y_outlier':y_outlier})
+
+
+
+def index(request):
+	return render(request, 'base.html')
+
+@csrf_exempt
+def curve(request): 
+	longitude = "72.14477539062501"
+	latitude = "24.279174804687507"
+	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/NDVI_PROBA?latitude="+latitude+"&longitude="+longitude
+	r = requests.get(url)
+	data =  r.json()
+	x = []
+	y = []
+	num = 0
+	for dat in data:
+		x.append(dat["time"])
+		y.append(dat["value"])
+	#x = [index for index in xrange(0,len(data))]
+	x = ar(x)
+	y = ar(y)
+	box = np.ones(3)/3
+	js = []
+	yhat = np.convolve(y, box, mode='same')
+	old_y = list(y)
+	new_x = []
+	x = list(x)
+	for nx in x:
+		new_x.append(str(nx))
+	new_y = []
+	yhat = list(yhat)
+	for ny in yhat:
+		new_y.append(ny)
+	data = {"x": new_x, "y" : new_y, "old_y" : old_y} 
+	return JsonResponse(data)
+
+def display_curve(request):
+	return render(request, 'chart.html')

@@ -2,9 +2,10 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect
 import re
-from models import Farmer, BorrowTractor, LendTractor
+from models import Farmer, BorrowTractor, LendTractor, Location, Crop
 from twilio.rest import TwilioRestClient 
 import urllib2
+import numpy as np
 # Create your views here.
 
 import json
@@ -45,10 +46,10 @@ def sms(request):
 				distance = get_distance(lender_farmer.lat, lender_farmer.lng, borrower_farmer.lat, borrower_farmer.lng)
 				distance = (ceil(distance*100)/100) 
 				borrower_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(lender_farmer.number) 
- 				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
- 				send_sms(borrower_text,borrower_farmer.number)
- 				send_sms(lender_text,lender_farmer.number)
- 				break
+				lender_text = "YOU HAVE BEEN PAIRED WITH A FARMER FOR A TRACTOR. THE FARMER IS  " + str(distance) + " KM away. Number is =  " + str(borrower_farmer.number)
+				send_sms(borrower_text,borrower_farmer.number)
+				send_sms(lender_text,lender_farmer.number)
+				break
 
 	elif 'needed' in body:
 		print ' IN NEEDED CONDITION '
@@ -73,28 +74,28 @@ def sms(request):
 				distance = (ceil(distance*100)/100) 
 				print distance
 				borrower_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
- 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
- 				send_sms(borrower_text,borrower_farmer.number)
- 				send_sms(lender_text,lender_farmer.number)
- 				print 'OK'
- 				break
+				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
+				send_sms(borrower_text,borrower_farmer.number)
+				send_sms(lender_text,lender_farmer.number)
+				print 'OK'
+				break
 
 	else:
 		print "Incorrect format"
 
 def get_distance(lat1, lng1, lat2, lng2):
-    radius_earth = 6371
-    adwyze_lat = radians(float(lat1))
-    adwyze_long = radians(float(lng1))
-    friend_lat = radians(float(lat2))
-    friend_long = radians(float(lng2))
-    d_lat = friend_lat - adwyze_lat
-    d_long = friend_long - adwyze_long
-    under_root = sin(d_lat / 2)**2 + cos(adwyze_lat) * \
-        cos(friend_lat) * ((sin(d_long) / 2)**2)
-    d_sigma = 2 * asin(sqrt(under_root))
-    distance = radius_earth * d_sigma
-    return distance
+	radius_earth = 6371
+	adwyze_lat = radians(float(lat1))
+	adwyze_long = radians(float(lng1))
+	friend_lat = radians(float(lat2))
+	friend_long = radians(float(lng2))
+	d_lat = friend_lat - adwyze_lat
+	d_long = friend_long - adwyze_long
+	under_root = sin(d_lat / 2)**2 + cos(adwyze_lat) * \
+		cos(friend_lat) * ((sin(d_long) / 2)**2)
+	d_sigma = 2 * asin(sqrt(under_root))
+	distance = radius_earth * d_sigma
+	return distance
 
 def parse(string):
 	pattern = ''
@@ -102,8 +103,8 @@ def parse(string):
 def retrieve_messages(message_id):
 	ACCOUNT_SID = "ACfd8458e1b38af66c49017d5905dcfaf2" 
 	AUTH_TOKEN = "dedea98e4e1ff2c7403667fdc8542373" 
- 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN) 
- 	smss = client.sms.messages.list()
+	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN) 
+	smss = client.sms.messages.list()
 	sender = ''
 	for sms in smss:
 		if sms.sid == message_id:
@@ -133,7 +134,94 @@ def get_location(request, id):
 		return HttpResponseRedirect('/admin')
 	return render(request, 'get_location.html',{'id':id})
 
-def stress_location(lat, lng):
-	pass
+def enter_location_data(request):
+	if(request.method == 'POST'):
+		lat = request.POST.get('glat')
+		lng = request.POST.get('glng')
+		location = Location.objects.create()
+		location.lat = lat
+		location.lng = lng
+		location.save()
+		location_id = location.id
+		return HttpResponseRedirect('/stresslocation/'+str(location_id))
+	return render(request, 'get_location2.html',{'id':id})
 
 
+
+def stress_location(request,cropid, locationid):
+	location = Location.objects.get(id=locationid)
+	lat = location.lat
+	lng = location.lng
+	url = 'http://api.openweathermap.org/data/2.5/forecast?lat='+lat+'&lon='+lng+'&APPID=c78c2556e02e8a78059f11575c8ddff9'
+	response = urllib2.urlopen(url).read()
+	json_response = json.loads(response)
+	days_list =  json_response['list']
+	crop = Crop.objects.get(id=cropid)
+	above_maximum = []
+	below_minimum = []
+	for day in days_list:
+		if float(day['main']['temp_max']-273.0) > float(crop.maxtemp):
+			tup = (day['dt_txt'], day['main']['temp_max'])
+			above_maximum.append(tup)
+		if float(day['main']['temp_min']-273.0) < float(crop.mintemp):
+			tup = (day['dt_txt'], day['main']['temp_min'])
+	print above_maximum
+	print below_minimum
+	return HttpResponse(content=json_response)
+
+def vegetation_outlier(request):
+	longitude = "72.14477539062501"
+	latitude = "24.279174804687507"
+	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/NDVI_PROBA?latitude="+latitude+"&longitude="+longitude
+	response = urllib2.urlopen(url).read()
+	json_response = json.loads(response)
+	location_difference = []
+	outliers = []
+	for index in xrange(1,len(json_response)-1):
+		value = json_response[index]["value"]
+		difference = abs(json_response[index-1]["value"]-value) + abs(json_response[index+1]["value"]-value)
+		location_difference.append(difference)
+	
+	location_difference_numpy = np.array(location_difference)
+	mean_difference = np.mean(location_difference_numpy)
+	std_difference = np.std(location_difference_numpy)
+	#print location_difference_numpy
+	for index, value in enumerate(location_difference):
+		if value> (mean_difference + std_difference*2):
+			outliers.append(index+1)
+	y_plot = [str(response['value']) for response in json_response]
+	x_plot = [response['time'] for response in json_response]
+	print y_plot
+	print x_plot
+	x_outlier = [json_response[outlier]['time'] for outlier in outliers]
+	y_outlier = [json_response[outlier]['value'] for outlier in outliers]
+	return render(request, 'vegetation_outlier.html',{'x_plot':x_plot,'y_plot':y_plot,'x_outlier':x_outlier, 'y_outlier':y_outlier})
+
+def moisture_outlier(request):
+	longitude = "72.14477539062501"
+	latitude = "24.279174804687507"
+	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/SMAP_SWI?latitude="+latitude+"&longitude="+longitude
+	response = urllib2.urlopen(url).read()
+	json_response = json.loads(response)
+	outliers = []
+	location_difference = []
+	for index in xrange(1,len(json_response)-1):
+		value = float(json_response[index]["value"])
+		difference = abs(float(D(json_response[index-1]["value"]))-value) + abs(float(D(json_response[index+1]["value"]))-value)
+		location_difference.append(difference)
+
+	location_difference_numpy = np.array(location_difference)
+	mean_difference = np.mean(location_difference_numpy)
+	std_difference = np.std(location_difference_numpy)
+	print location_difference
+	for index, value in enumerate(location_difference):
+		if value> (mean_difference + std_difference*2):	
+			outliers.append(index+1)
+	
+	y_plot = [str(response['value']) for response in json_response]
+	x_plot = [response['time'] for response in json_response]
+	print y_plot
+	print x_plot
+	x_outlier = [json_response[outlier]['time'] for outlier in outliers]
+	y_outlier = [json_response[outlier]['value'] for outlier in outliers]
+	return render(request, 'moisture_outlier.html',{'x_plot':x_plot,'y_plot':y_plot,'x_outlier':x_outlier, 'y_outlier':y_outlier})

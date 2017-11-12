@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Insert the farmer's location</title>
+    <title>Enter the area which you wish to analyze</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
     <!-- Latest compiled and minified CSS -->
@@ -137,7 +137,7 @@
         <input id="pac-input" type="text"
             placeholder="Enter a location">
       </div>
-      <form method="POST" action="/getlocation/">
+      <form method="POST" action="/inputlocation/">
           {% csrf_token %}
           <button class="btn btn-primary" id="gbtn"> <input type="submit" action="www.google.com"/> </button>
           <input type = "hidden" id="glat" name="glat" value="" />

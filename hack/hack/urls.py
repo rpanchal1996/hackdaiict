@@ -20,5 +20,9 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^sms',views.sms),
     url(r'^getlocation/(\d+)',views.get_location),
-    url(r'^registerfarmer',views.register_farmer)
+    url(r'^registerfarmer',views.register_farmer),
+    url(r'^inputlocation/',views.enter_location_data),
+    url(r'^stresslocation/(\d+)/(\d+)',views.stress_location),
+    url(r'^vegetationcloud/',views.vegetation_outlier),
+
 ]

@@ -25,7 +25,7 @@ from operator import itemgetter
 def send_sms(message,number):
 	number = number[3:]
 	print number
-	urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=183285A4cmVICIpG5a075623&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
+	urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=183285A4cmVICIpG5a075623&mobiles='+number+'&message='+message+'&sender=MSGIND&route=4'
 	response = urllib2.urlopen(urltosend).read()
 	print response
 
@@ -57,9 +57,9 @@ def sms(request):
 				distance = (ceil(distance*100)/100) 
 				borrower_text = 'THE FARMER IS' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
 				lender_text = 'THE FARMER IS'   + str(distance) + ' KM away. Number is =  ' + str(borrower_farmer.number)
-				borrower_farmer.fullfilled = 1
+				borrower_farmer.fullfilled = "1"
 				borrower_farmer.save()
-				lender_farmer.fullfilled = 1
+				lender_farmer.fullfilled = "1"
 				lender_farmer.save()
 				send_sms(borrower_text,borrower_farmer.number)
 				send_sms(lender_text,lender_farmer.number)
@@ -88,12 +88,14 @@ def sms(request):
 				print distance
 				borrower_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
+				lender_farmer.fullfilled = "1"
+				lender_farmer.save()
+				borrower_farmer.fullfilled = "1"
+				borrower_farmer.save()
+				print borrower_farmer.fullfilled
+				print lender_farmer.fullfilled
 				send_sms(borrower_text,borrower_farmer.number)
 				send_sms(lender_text,lender_farmer.number)
-				borrower_farmer.save()
-				lender_farmer.fullfilled = 1
-				lender_farmer.save()
-				borrower_farmer.fullfilled = 1
 				break
 	else:
 		print "Incorrect format"
@@ -170,19 +172,23 @@ def stress_location(request,cropid, locationid):
 	url = 'http://api.openweathermap.org/data/2.5/forecast?lat='+lat+'&lon='+lng+'&APPID=c78c2556e02e8a78059f11575c8ddff9'
 	response = urllib2.urlopen(url).read()
 	json_response = json.loads(response)
+	print json_response
 	days_list =  json_response['list']
 	crop = Crop.objects.get(id=cropid)
+	print crop.maxtemp
+	print crop.mintemp
 	above_maximum = []
 	below_minimum = []
 	for day in days_list:
-		if float(day['main']['temp_max']-273.0) > float(crop.maxtemp):
-			tup = (day['dt_txt'], day['main']['temp_max'])
+		if (float(day['main']['temp_max']-273.0) > float(crop.maxtemp)):
+			tup = (day['dt_txt'], day['main']['temp_max']-273)
 			above_maximum.append(tup)
 		if float(day['main']['temp_min']-273.0) < float(crop.mintemp):
-			tup = (day['dt_txt'], day['main']['temp_min'])
+			tup = (day['dt_txt'], day['main']['temp_min']-273)
+			below_minimum.append(tup)
 	print above_maximum
 	print below_minimum
-	return HttpResponse(content=json_response)
+	return render(request,'stress.html',{'above_maximum':above_maximum,'below_minimum':below_minimum})
 
 def vegetation_outlier(request,id):
 	location = Location.objects.get(id=id)
@@ -368,3 +374,6 @@ def home(request,id):
 
 def information(request):
     return render(request, 'information.html')
+
+
+

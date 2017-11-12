@@ -158,7 +158,7 @@ def enter_location_data(request):
 		location.lng = lng
 		location.save()
 		location_id = location.id
-		return HttpResponseRedirect('/recommend/'+str(location_id))
+		return HttpResponseRedirect('/home/'+str(location_id))
 	return render(request, 'get_location2.html',{'id':id})
 
 
@@ -363,3 +363,8 @@ def wheat (request):
 def bajra (request):
 	return render(request, 'Bajra.html')
 
+def home(request,id):
+	return render(request, 'home.html', {'id':id})
+
+def information(request):
+    return render(request, 'information.html')

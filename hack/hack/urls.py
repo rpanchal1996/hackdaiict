@@ -33,4 +33,5 @@ urlpatterns = [
 	url(r'^jamnagar/', views.jamnagar),
 	url(r'^wheat/', views.wheat),
 	url(r'^bajra/', views.bajra),
+	url(r'^home/(\d+)', views.home),
 ]

@@ -53,3 +53,12 @@ class FarmerDemand(models.Model):
     demand_capacity  = models.CharField(max_length=100, blank=True, null=True)
     demand_date      = models.CharField(max_length=100, blank=True, null=True)
     number = models.CharField(max_length=100, blank=True, null=True)
+
+class recommendedCrops(models.Model):
+	name = models.CharField(max_length=18)
+	season = models.CharField(max_length=10)
+	city = models.CharField(max_length=60)
+	state = models.CharField(max_length=30)
+
+	def __str__(self):
+		return self.name

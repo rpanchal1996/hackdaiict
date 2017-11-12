@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, HttpResponseRedirect
 import re
-from models import Farmer, BorrowTractor, LendTractor, Location, Crop, Truck, Order, FarmerDemand
+from models import Farmer, BorrowTractor, LendTractor, Location, Crop, Truck, Order, FarmerDemand, recommendedCrops
 from twilio.rest import TwilioRestClient 
 import urllib2
 import numpy as np
@@ -14,6 +14,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from scipy.signal import find_peaks_cwt
 import matplotlib.pyplot as plt
+import pandas
+from math import pow, atan2, radians, sin, cos, sqrt
 # Create your views here.
 
 import json
@@ -21,11 +23,11 @@ from math import radians, asin, sin, cos, sqrt, ceil
 from operator import itemgetter
 
 def send_sms(message,number):
-number = number[3:]
-print number
-urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=183285A4cmVICIpG5a075623&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
-response = urllib2.urlopen(urltosend).read()
-print response
+	number = number[3:]
+	print number
+	urltosend = 'https://control.msg91.com/api/sendhttp.php?authkey=183285A4cmVICIpG5a075623&mobiles='+number+'&message='+message+'&sender=ELTSPY&route=4'
+	response = urllib2.urlopen(urltosend).read()
+	print response
 
 @csrf_exempt
 def sms(request):
@@ -55,12 +57,12 @@ def sms(request):
 				distance = (ceil(distance*100)/100) 
 				borrower_text = 'THE FARMER IS' + str(distance) + ' KM away. Number is =  ' + str(lender_farmer.number) 
 				lender_text = 'THE FARMER IS'   + str(distance) + ' KM away. Number is =  ' + str(borrower_farmer.number)
-				send_sms(borrower_text,borrower_farmer.number)
-				send_sms(lender_text,lender_farmer.number)
 				borrower_farmer.fullfilled = 1
 				borrower_farmer.save()
 				lender_farmer.fullfilled = 1
 				lender_farmer.save()
+				send_sms(borrower_text,borrower_farmer.number)
+				send_sms(lender_text,lender_farmer.number)
 				break
 
 	elif 'needed' in body:
@@ -88,10 +90,10 @@ def sms(request):
 				lender_text = 'THE FARMER IS  ' + str(distance) + ' KM away. Number is =  '+ str(borrower_farmer.number)
 				send_sms(borrower_text,borrower_farmer.number)
 				send_sms(lender_text,lender_farmer.number)
-				borrower_farmer.fullfilled = 1
 				borrower_farmer.save()
 				lender_farmer.fullfilled = 1
 				lender_farmer.save()
+				borrower_farmer.fullfilled = 1
 				break
 	else:
 		print "Incorrect format"
@@ -156,7 +158,7 @@ def enter_location_data(request):
 		location.lng = lng
 		location.save()
 		location_id = location.id
-		return HttpResponseRedirect('/stresslocation/'+str(location_id)+'/1')
+		return HttpResponseRedirect('/recommend/'+str(location_id))
 	return render(request, 'get_location2.html',{'id':id})
 
 
@@ -312,4 +314,52 @@ def find_peak(request,id):
 		plt.plot(t[peak+1],y_values[peak+1],'ro')
 	#plt.show()
 	plt.savefig('/home/rudresh/Desktop/plot.png')
+
+#######################################################################################
+def findDistance(latitudes, longitudes):
+	radius = 6371.00
+	centralAngle = (haversine(latitudes[1] - latitudes[0]) \
+					+ cos(radians(latitudes[1])) * cos(radians(latitudes[0])) * \
+					haversine(longitudes[1] - longitudes[0]))
+	distance = 2.0 * radius * atan2(sqrt(centralAngle), sqrt(1-centralAngle))
+	return distance
+
+def recommend(request,locationid):
+	city_details = pandas.read_csv('app/statelocation.csv', encoding='utf-8', delimiter=',')
+	location = Location.objects.get(id=locationid)
+	city_list = []
+	lat = location.lat
+	lng = location.lng
+	for i in range(len(city_details)):
+		city_name = city_details.iloc[i]['city_name']
+		city_distance = findDistance([float(lat), city_details.iloc[i]['latitude']], \
+			[float(lng), city_details.iloc[i]['longitude']])
+		
+		city_list.append([city_distance, city_name])
+	
+	city_list.sort()
+	querySet = recommendedCrops.objects.filter(city=city_list[0][1])
+	
+	if city_list[0][1] == 'AHMADABAD':
+		return HttpResponseRedirect("/jamnagar")
+
+	return HttpResponseRedirect("/ahmedabad")
+
+def haversine(angle):
+	return pow(sin(radians(angle)/2.0), 2)
+
+def index(request):
+	return render(request, 'base.html')
+
+def ahmedabad (request):
+	return render(request, 'ahmedabad.html')
+
+def jamnagar (request):
+	return render(request, 'jamnagar.html')
+
+def wheat (request):
+	return render(request, 'WHEAT.html')
+
+def bajra (request):
+	return render(request, 'Bajra.html')
 

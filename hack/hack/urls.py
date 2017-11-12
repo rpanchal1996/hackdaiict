@@ -27,6 +27,10 @@ urlpatterns = [
 	url(r'^$', views.index), 
 	url(r'^curve$', views.curve),
 	url(r'^display_curve$', views.display_curve),
-	url(r'^findpeak/(\d+)', views.find_peak)
-
+	url(r'^findpeak/(\d+)', views.find_peak),
+	url(r'^recommend/(\d+)', views.recommend),
+	url(r'^ahmedabad/', views.ahmedabad),
+	url(r'^jamnagar/', views.jamnagar),
+	url(r'^wheat/', views.wheat),
+	url(r'^bajra/', views.bajra),
 ]

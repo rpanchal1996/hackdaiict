@@ -165,7 +165,7 @@ def enter_location_data(request):
 
 
 
-def stress_location(request,cropid, locationid):
+def stress_location(request,locationid, cropid):
 	location = Location.objects.get(id=locationid)
 	lat = location.lat
 	lng = location.lng
@@ -268,9 +268,10 @@ def index(request):
 	return render(request, 'base.html')
 
 @csrf_exempt
-def curve(request): 
-	longitude = "72.14477539062501"
-	latitude = "24.279174804687507"
+def curve(request, id): 
+	farmer = Location.objects.get(id=id)
+	longitude = farmer.lng 
+	latitude = farmer.lat
 	url = "http://vedas.sac.gov.in:8080/LeanGeo/api/band_val/NDVI_PROBA?latitude="+latitude+"&longitude="+longitude
 	r = requests.get(url)
 	data =  r.json()
@@ -298,8 +299,8 @@ def curve(request):
 	data = {"x": new_x, "y" : new_y, "old_y" : old_y} 
 	return JsonResponse(data)
 
-def display_curve(request):
-	return render(request, 'chart.html')
+def display_curve(request,id):
+	return render(request, 'chart.html',{'id':id})
 
 def find_peak(request,id):
 	location = Location.objects.get(id=id)
@@ -373,7 +374,7 @@ def home(request,id):
 	return render(request, 'home.html', {'id':id})
 
 def information(request):
-    return render(request, 'information.html')
+	return render(request, 'information.html')
 
 
 

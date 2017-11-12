@@ -25,8 +25,8 @@ urlpatterns = [
 	url(r'^stresslocation/(\d+)/(\d+)',views.stress_location),
 	url(r'^vegetationcloud/(\d+)',views.vegetation_outlier),
 	url(r'^$', views.index), 
-	url(r'^curve$', views.curve),
-	url(r'^display_curve$', views.display_curve),
+	url(r'^curve/(\d+)$', views.curve),
+	url(r'^display_curve/(\d+)', views.display_curve),
 	url(r'^findpeak/(\d+)', views.find_peak),
 	url(r'^recommend/(\d+)', views.recommend),
 	url(r'^ahmedabad/', views.ahmedabad),
@@ -34,4 +34,5 @@ urlpatterns = [
 	url(r'^wheat/', views.wheat),
 	url(r'^bajra/', views.bajra),
 	url(r'^home/(\d+)', views.home),
+	url(r'^information', views.information),
 ]

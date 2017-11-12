@@ -20,7 +20,7 @@
            <div class="col-md-6 col-sm-6 col-xs-12">
                 <div class="x_panel">
                   <div class="x_title">
-                    <h2>High Temperature Alert<small>Stripped table subtitle</small></h2>
+                    <h2>High Temperature Alert<small></small></h2>
                     <table class="table table-striped">
                       <thead>
                         <tr>
@@ -31,7 +31,6 @@
                       <tbody>
                         {% for tuple in above_maximum%}
                         <tr>
-                          <th scope="row">1</th>
                           <td>{{tuple.0}}</td>
                           <td>{{tuple.1}}</td>
                         </tr>
@@ -46,7 +45,7 @@
            <div class="col-md-6 col-sm-6 col-xs-12">
                 <div class="x_panel">
                   <div class="x_title">
-                    <h2>Stripped table <small>Stripped table subtitle</small></h2>
+                    <h2>Low Temperature Alert<small></small></h2>
                     <ul class="nav navbar-right panel_toolbox">
                       <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
                       </li>
